@@ -9,6 +9,7 @@ import Groq from 'groq-sdk';
 dotenv.config();
 
 const app = express();
+app.use(express.json());
 
 // Robust custom CORS middleware to guarantee Private Network Access is allowed
 app.use((req, res, next) => {
