@@ -171,7 +171,7 @@ export default function App() {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "openai/gpt-oss-120b",
+            model: "llama-3.1-8b-instant",
             messages: [
               {
                 role: "system",
