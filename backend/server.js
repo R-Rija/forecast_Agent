@@ -238,7 +238,7 @@ app.post('/api/multi-agent-analysis', async (req, res) => {
 
         const completion = await groq.chat.completions.create({
             messages: [{ role: "user", content: prompt }],
-            model: "llama-3.1-8b-instant",
+            model: "openai/gpt-oss-120b",
             temperature: 0.7,
             response_format: { type: "json_object" }
         });
@@ -285,7 +285,7 @@ CRITICAL INSTRUCTIONS:
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userMsg }
             ],
-            model: "llama-3.1-8b-instant",
+            model: "openai/gpt-oss-120b",
             temperature: 0.7
         });
 
