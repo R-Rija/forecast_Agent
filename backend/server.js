@@ -148,7 +148,7 @@ app.post('/api/market-intelligence', async (req, res) => {
         // We will run the Amazon scraper as a demonstration for market intelligence.
         // Running all 5 synchronously would take too long and cause timeouts.
         const input = {
-            "categoryUrl": `https://www.amazon.com/s?k=${encodeURIComponent(query)}`,
+            "categoryOrProductUrls": [{ "url": `https://www.amazon.com/s?k=${encodeURIComponent(query)}` }],
             "maxItems": 3,
             "proxyConfiguration": { "useApifyProxy": true }
         };
@@ -172,7 +172,7 @@ app.post('/api/market-intelligence', async (req, res) => {
         res.status(200).json({ success: true, data: summary });
     } catch (err) {
         console.error("Apify Error:", err);
-        res.status(500).json({ error: err.message });
+        res.status(200).json({ success: false, error: err.message, data: [] });
     }
 });
 
