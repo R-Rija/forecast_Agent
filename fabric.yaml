@@ -1,0 +1,7 @@
+activeProfile: default
+profiles:
+  default:
+    semanticModels:
+      DemandForecasting:
+        workspaceId: "c714896b-2bb1-49ea-a0d2-cfc76afa92fa"
+        itemId: "28662eb0-9e6a-4cc1-8ad6-208e31b12b69"
