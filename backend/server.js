@@ -251,6 +251,50 @@ app.post('/api/multi-agent-analysis', async (req, res) => {
         res.status(200).json({ success: false, error: err.message, reasonings: {} });
     }
 });
+app.post('/api/chat', async (req, res) => {
+    const { userMsg, rows, marketIntelligence } = req.body;
+    
+    if (!userMsg) {
+        return res.status(400).json({ error: "Missing userMsg" });
+    }
+
+    try {
+        if (!process.env.GROQ_API_KEY) {
+            return res.status(200).json({ success: false, error: "GROQ_API_KEY is missing on the server." });
+        }
+
+        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+        
+        const systemPrompt = `You are an Autonomous Retail Intelligence Agent. You have direct access to the live Microsoft Fabric Lakehouse data rows: ${JSON.stringify(rows || [])}. 
+The data columns are: [0: SKU, 1: Product Name, 2: Category, 3: Subcategory, 4: Region, 5: Warehouse, 6: Available Stock, 7: Predicted Demand, 8: Stockout Risk, 9: AI Reasoning].
+
+You ALSO have access to this real-time web scraped data from Apify:
+${marketIntelligence || "No market data available."}
+
+CRITICAL INSTRUCTIONS:
+1. NEVER output raw markdown tables of the entire dataset unless the user explicitly asks for a "table" of all data.
+2. When asked general questions, provide a highly concise summary.
+3. Keep answers extremely brief, human-like, and directly address the user's prompt.
+4. Always factor in the live Apify market data if it is relevant to the user's question (e.g. mention competitor prices if available).
+5. DO NOT use markdown formatting like ** or bullet points. Use plain text only.
+6. DO NOT explain mathematical formulas or logic. Just state the region, the reason, and the numbers naturally.
+7. DO NOT use em dashes or en dashes anywhere in your response. Use standard commas or periods for pauses.`;
+
+        const completion = await groq.chat.completions.create({
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userMsg }
+            ],
+            model: "llama-3.1-8b-instant",
+            temperature: 0.7
+        });
+
+        res.status(200).json({ success: true, reply: completion.choices[0]?.message?.content || "No response." });
+    } catch (err) {
+        console.error("Chat API Error:", err);
+        res.status(200).json({ success: false, error: err.message });
+    }
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

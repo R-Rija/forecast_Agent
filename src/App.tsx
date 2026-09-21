@@ -160,49 +160,24 @@ export default function App() {
         
         setIsScraping(false);
 
-        // Select the current API key and advance the index
-        const currentApiKey = GROQ_KEYS[groqKeyIndexRef.current];
-        groqKeyIndexRef.current = (groqKeyIndexRef.current + 1) % GROQ_KEYS.length;
-
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const response = await fetch("https://forecast-agent.onrender.com/api/chat", {
           method: "POST",
-          headers: {
-            "Authorization": `Bearer ${currentApiKey}`,
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "llama-3.1-8b-instant",
-            messages: [
-              {
-                role: "system",
-                content: `You are an Autonomous Retail Intelligence Agent. You have direct access to the live Microsoft Fabric Lakehouse data rows: ${JSON.stringify(rows)}. 
-The data columns are: [0: SKU, 1: Product Name, 2: Category, 3: Subcategory, 4: Region, 5: Warehouse, 6: Available Stock, 7: Predicted Demand, 8: Stockout Risk, 9: AI Reasoning].
-
-You ALSO have access to this real-time web scraped data from Apify:
-${marketIntelligence}
-
-CRITICAL INSTRUCTIONS:
-1. NEVER output raw markdown tables of the entire dataset unless the user explicitly asks for a "table" of all data.
-2. When asked general questions, provide a highly concise summary.
-3. Keep answers extremely brief, human-like, and directly address the user's prompt.
-4. Always factor in the live Apify market data if it is relevant to the user's question (e.g. mention competitor prices if available).
-5. DO NOT use markdown formatting like ** or bullet points. Use plain text only.
-6. DO NOT explain mathematical formulas or logic (e.g. never say "available < predicted demand"). Just state the region, the reason, and the numbers naturally.
-7. DO NOT use em dashes (—) or en dashes (–) anywhere in your response. Use standard commas or periods for pauses.`
-              },
-              { role: 'user', content: userMsg }
-            ]
+            userMsg,
+            rows,
+            marketIntelligence
           })
         });
 
         const data = await response.json();
         
         let agentReply = "I am analyzing the live inventory tables, but could not process that query right now.";
-        if (data.error) {
-          agentReply = "Groq API Error: " + JSON.stringify(data.error);
-        } else if (data.choices?.[0]?.message?.content) {
+        if (!data.success && data.error) {
+          agentReply = "Server Error: " + data.error;
+        } else if (data.reply) {
           // Fallback to strip out em dashes and en dashes if the LLM ignores instructions
-          agentReply = data.choices[0].message.content.replace(/[—–]/g, '-');
+          agentReply = data.reply.replace(/[—–]/g, '-');
         }
         
         setChatHistory(prev => [...prev, { role: 'assistant', text: agentReply }]);
