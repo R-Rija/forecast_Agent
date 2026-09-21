@@ -202,7 +202,7 @@ app.post('/api/multi-agent-analysis', async (req, res) => {
 
         console.log(`[Multi-Agent] Scraping global trends for category: ${searchKeyword}`);
         const run = await apifyClient.actor("junglee/Amazon-crawler").call({
-            "categoryUrl": `https://www.amazon.com/s?k=${encodeURIComponent(searchKeyword)}`,
+            "categoryOrProductUrls": [{ "url": `https://www.amazon.com/s?k=${encodeURIComponent(searchKeyword)}` }],
             "maxItems": 3,
             "proxyConfiguration": { "useApifyProxy": true }
         });
@@ -248,7 +248,7 @@ app.post('/api/multi-agent-analysis', async (req, res) => {
         res.status(200).json({ success: true, reasonings });
     } catch (err) {
         console.error("Multi-Agent Analysis Error:", err);
-        res.status(500).json({ error: err.message, reasonings: {} });
+        res.status(200).json({ success: false, error: err.message, reasonings: {} });
     }
 });
 
