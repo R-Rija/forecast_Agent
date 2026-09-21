@@ -175,6 +175,77 @@ app.post('/api/market-intelligence', async (req, res) => {
     }
 });
 
+import Groq from "groq-sdk";
+
+app.post('/api/multi-agent-analysis', async (req, res) => {
+    const { products } = req.body;
+    
+    if (!products || !Array.isArray(products) || products.length === 0) {
+        return res.status(400).json({ error: "Missing or invalid products array" });
+    }
+
+    try {
+        const apifyClient = new ApifyClient({
+            token: process.env.APIFY_API_TOKEN,
+        });
+        
+        // We will randomly pick the top product's category to run a fast search
+        // Running 5 scrapers for 12 products would take hours and crash the server.
+        // We do 1 fast Amazon crawl to represent the "Market Trend" to keep it under 30s.
+        const searchKeyword = products[0].category || products[0].name;
+
+        console.log(`[Multi-Agent] Scraping global trends for category: ${searchKeyword}`);
+        const run = await apifyClient.actor("junglee/Amazon-crawler").call({
+            "categoryUrl": `https://www.amazon.com/s?k=${encodeURIComponent(searchKeyword)}`,
+            "maxItems": 3,
+            "proxyConfiguration": { "useApifyProxy": true }
+        });
+        
+        const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
+        const marketData = items.slice(0, 3).map(item => ({
+            title: item.title,
+            price: item.price,
+            rating: item.rating
+        }));
+
+        // Now initialize Groq
+        const groq = new Groq({
+            apiKey: process.env.GROQ_API_KEY,
+        });
+
+        // Generate reasoning for ALL products in one prompt
+        const prompt = `
+        You are an elite Autonomous Supply Chain AI connected to Microsoft Fabric, YouTube, Instagram, Amazon, Shopee, and Alibaba.
+        
+        Recent Market Data Scraped for ${searchKeyword}:
+        ${JSON.stringify(marketData)}
+        
+        Generate a unique, single-paragraph "AI Intelligence Reasoning" for each of the following products. 
+        Incorporate current hypothetical weather patterns, social media viral trends (TikTok/Instagram), competitor pricing, and stockout risks based on the available stock vs demand.
+        Keep it concise, plain text only (NO bolding, NO asterisks, NO markdown).
+        
+        Products to analyze:
+        ${JSON.stringify(products)}
+        
+        Return ONLY a JSON dictionary where the key is the SKU and the value is the reasoning string. Example: {"SKU-1001": "Based on a viral TikTok trend..."}
+        `;
+
+        const completion = await groq.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            model: "llama3-8b-8192",
+            temperature: 0.7,
+            response_format: { type: "json_object" }
+        });
+
+        const reasonings = JSON.parse(completion.choices[0]?.message?.content || "{}");
+        
+        res.status(200).json({ success: true, reasonings });
+    } catch (err) {
+        console.error("Multi-Agent Analysis Error:", err);
+        res.status(500).json({ error: err.message, reasonings: {} });
+    }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Backend server listening on port ${PORT}`);

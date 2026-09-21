@@ -87,6 +87,36 @@ export default function App() {
   const highRiskCount = rows.filter((r: any) => r[8] === 'HIGH').length.toString();
   const activeRegionsCount = new Set(rows.map((r: any) => r[4])).size.toString();
 
+  // Multi-Agent Reasoning State
+  const [agentReasonings, setAgentReasonings] = useState<Record<string, string>>({});
+  const [isAgentsScanning, setIsAgentsScanning] = useState(false);
+
+  useEffect(() => {
+    // Only run if we have rows and haven't fetched reasonings yet
+    if (rows.length > 0 && Object.keys(agentReasonings).length === 0 && !isAgentsScanning) {
+      const fetchReasonings = async () => {
+        setIsAgentsScanning(true);
+        try {
+          const products = rows.map((r: any) => ({ sku: r[0], name: r[1], category: r[2], region: r[4], stock: r[6], demand: r[7] }));
+          const res = await fetch("https://forecast-agent.onrender.com/api/multi-agent-analysis", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ products })
+          });
+          const data = await res.json();
+          if (data.success && data.reasonings) {
+            setAgentReasonings(data.reasonings);
+          }
+        } catch (err) {
+          console.error("Failed to run multi-agent analysis", err);
+        } finally {
+          setIsAgentsScanning(false);
+        }
+      };
+      fetchReasonings();
+    }
+  }, [rows]);
+
   // Array of Groq API keys for round-robin rotation
   const GROQ_KEYS = [
     import.meta.env.VITE_GROQ_API_KEY_1 || '',
@@ -223,9 +253,6 @@ CRITICAL INSTRUCTIONS:
             <p className="text-sm text-[#4f772d] font-medium tracking-wide">
               Autonomous Demand Forecasting and Multi-Agent Inventory Optimization Engine
             </p>
-            <p className="text-xs text-gray-500 font-medium tracking-wide uppercase mt-0.5">
-              Real-time multi-agent analysis powered by Microsoft Fabric, Apify & Groq AI
-            </p>
           </div>
         </div>
         
@@ -358,7 +385,13 @@ CRITICAL INSTRUCTIONS:
                             </span>
                           </td>
                           <td className="px-6 py-4 text-xs text-gray-600 max-w-xs leading-relaxed">
-                            {reasoning}
+                            {agentReasonings[sku] ? (
+                              <span className="text-gray-900 font-medium">{agentReasonings[sku]}</span>
+                            ) : (
+                              <span className="text-[#4f772d] animate-pulse flex items-center gap-2">
+                                <Activity className="w-4 h-4 animate-spin" /> Agent scanning global trends & social media...
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );
