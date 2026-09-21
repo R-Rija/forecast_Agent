@@ -112,7 +112,7 @@ export default function App() {
         // 1. Fetch real-time market intelligence from Apify via our backend
         let marketIntelligence = "No external market data available right now.";
         try {
-          const apifyRes = await fetch("http://localhost:5000/api/market-intelligence", {
+          const apifyRes = await fetch("https://forecast-agent.onrender.com/api/market-intelligence", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ query: userMsg })
@@ -190,7 +190,7 @@ CRITICAL INSTRUCTIONS:
     // Because the frontend is on HTTPS and backend is on HTTP localhost, 
     // fetch/iframe is blocked by Mixed Content and PNA. 
     // Opening it in a new window context bypasses this security block.
-    const triggerWindow = window.open('http://localhost:5000/api/run-pipeline', '_blank', 'width=400,height=300,top=100,left=100');
+    const triggerWindow = window.open('https://forecast-agent.onrender.com/api/run-pipeline', '_blank', 'width=400,height=300,top=100,left=100');
     
     setTimeout(() => {
       setIsPipelineRunning(false);
