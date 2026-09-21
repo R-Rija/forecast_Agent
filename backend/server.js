@@ -3,6 +3,8 @@ import cors from 'cors';
 import sql from 'mssql';
 import { DefaultAzureCredential } from '@azure/identity';
 import dotenv from 'dotenv';
+import { ApifyClient } from 'apify-client';
+import Groq from 'groq-sdk';
 
 dotenv.config();
 
@@ -129,8 +131,6 @@ app.all('/api/run-pipeline', async (req, res) => {
     }
 });
 
-import { ApifyClient } from 'apify-client';
-
 app.post('/api/market-intelligence', async (req, res) => {
     const { query } = req.body;
     
@@ -175,8 +175,6 @@ app.post('/api/market-intelligence', async (req, res) => {
     }
 });
 
-import Groq from "groq-sdk";
-
 app.post('/api/multi-agent-analysis', async (req, res) => {
     const { products } = req.body;
     
@@ -185,6 +183,13 @@ app.post('/api/multi-agent-analysis', async (req, res) => {
     }
 
     try {
+        if (!process.env.APIFY_API_TOKEN) {
+            return res.status(400).json({ error: "APIFY_API_TOKEN is missing on the server." });
+        }
+        if (!process.env.GROQ_API_KEY) {
+            return res.status(400).json({ error: "GROQ_API_KEY is missing on the server." });
+        }
+
         const apifyClient = new ApifyClient({
             token: process.env.APIFY_API_TOKEN,
         });
