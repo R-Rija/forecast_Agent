@@ -265,11 +265,28 @@ app.post('/api/chat', async (req, res) => {
 
         const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
         
+        let weatherContext = "";
+        // Simple regex to catch "weather in [city]" or "wheather in [city]"
+        const weatherMatch = userMsg.match(/wheather in ([\w\s]+)|weather in ([\w\s]+)/i);
+        const city = weatherMatch ? (weatherMatch[1] || weatherMatch[2]).trim() : null;
+        
+        if (city && process.env.WEATHER_API_KEY) {
+            try {
+                const weatherRes = await fetch(`http://api.weatherapi.com/v1/current.json?key=${process.env.WEATHER_API_KEY}&q=${encodeURIComponent(city)}`);
+                const weatherData = await weatherRes.json();
+                if (weatherData && weatherData.current) {
+                    weatherContext = `\nLIVE WEATHER FOR ${city.toUpperCase()}: ${weatherData.current.condition.text}, ${weatherData.current.temp_c}°C (${weatherData.current.temp_f}°F), Humidity: ${weatherData.current.humidity}%.`;
+                }
+            } catch (err) {
+                console.error("Weather API error:", err);
+            }
+        }
+
         const systemPrompt = `You are an Autonomous Retail Intelligence Agent. You have direct access to the live Microsoft Fabric Lakehouse data rows: ${JSON.stringify(rows || [])}. 
 The data columns are: [0: SKU, 1: Product Name, 2: Category, 3: Subcategory, 4: Region, 5: Warehouse, 6: Available Stock, 7: Predicted Demand, 8: Stockout Risk, 9: AI Reasoning].
 
 You ALSO have access to this real-time web scraped data from Apify:
-${marketIntelligence || "No market data available."}
+${marketIntelligence || "No market data available."}${weatherContext}
 
 CRITICAL INSTRUCTIONS:
 1. NEVER output raw markdown tables of the entire dataset unless the user explicitly asks for a "table" of all data.
